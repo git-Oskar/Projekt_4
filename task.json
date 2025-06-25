@@ -1,0 +1,20 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build with /SUBSYSTEM:WINDOWS",
+      "type": "shell",
+      "command": "cl",
+      "args": [
+        "main.cpp",
+        "/link",
+        "/SUBSYSTEM:WINDOWS"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    }
+  ]
+}
