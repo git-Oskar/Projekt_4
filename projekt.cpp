@@ -61,7 +61,14 @@ void RysujSkale(HDC hdc) {
         Rectangle(hdc, 700 , 30 + i * 30, 730, 60 + i * 30);
         wchar_t num[2] = {};
         num [0] = L'1' + i; // zamiana liczby na znak
-        TextOutW(hdc, 735, 30 + i * 30, &num[0], 1);
+        num[1] = L'\0';
+        if(i == 9)
+        {
+        num[0] = L'1';
+        num[1] = L'0';
+    
+        }
+        TextOutW(hdc, 735, 30 + i * 30, &num[0], 2);
          DeleteObject(hBrush);
     }
    
@@ -177,12 +184,26 @@ void PokazPlus(HWND hwnd)
     }
 }
 
-void PokazKsztalty(HWND hwnd) {
-    CreateWindowW(L"BUTTON", L"Kwadrat", WS_VISIBLE | WS_CHILD, 10, 50, 100, 30, hwnd, (HMENU)(200), NULL, NULL);
-    CreateWindowW(L"BUTTON", L"Trojkat", WS_VISIBLE | WS_CHILD, 120, 50, 100, 30, hwnd, (HMENU)(201), NULL, NULL);
-    CreateWindowW(L"BUTTON", L"Kolo", WS_VISIBLE | WS_CHILD, 230, 50, 100, 30, hwnd, (HMENU)(202), NULL, NULL);
-    CreateWindowW(L"BUTTON", L"Przenoszenie", WS_VISIBLE | WS_CHILD, 10, 100, 150, 30, hwnd, (HMENU)(300), NULL, NULL);
+void PokazPrzyciskiZadan(HWND hwnd) {
+    CreateWindowW(L"BUTTON", L"Wybierz tryb klocka:", WS_VISIBLE | WS_CHILD | BS_GROUPBOX,
+        300, 10, 220, 100, hwnd, NULL, NULL, NULL);
+
+    CreateWindowW(L"BUTTON", L"Kwadraty", WS_VISIBLE | WS_CHILD | BS_AUTORADIOBUTTON,
+        300, 30, 200, 20, hwnd, (HMENU)100, NULL, NULL);
+    CreateWindowW(L"BUTTON", L"Trojkaty", WS_VISIBLE | WS_CHILD | BS_AUTORADIOBUTTON,
+        300, 50, 200, 20, hwnd, (HMENU)101, NULL, NULL);
+    CreateWindowW(L"BUTTON", L"Kolka", WS_VISIBLE | WS_CHILD | BS_AUTORADIOBUTTON,
+        300, 70, 200, 20, hwnd, (HMENU)102, NULL, NULL);
+    CreateWindowW(L"BUTTON", L"Wszystkie ksztalty", WS_VISIBLE | WS_CHILD | BS_AUTORADIOBUTTON,
+        300, 90, 200, 20, hwnd, (HMENU)103, NULL, NULL);
 }
+
+// void PokazKsztalty(HWND hwnd) {
+//     CreateWindowW(L"BUTTON", L"Kwadrat", WS_VISIBLE | WS_CHILD, 10, 50, 100, 30, hwnd, (HMENU)(200), NULL, NULL);
+//     CreateWindowW(L"BUTTON", L"Trojkat", WS_VISIBLE | WS_CHILD, 120, 50, 100, 30, hwnd, (HMENU)(201), NULL, NULL);
+//     CreateWindowW(L"BUTTON", L"Kolo", WS_VISIBLE | WS_CHILD, 230, 50, 100, 30, hwnd, (HMENU)(202), NULL, NULL);
+//     CreateWindowW(L"BUTTON", L"Przenoszenie", WS_VISIBLE | WS_CHILD, 10, 100, 150, 30, hwnd, (HMENU)(300), NULL, NULL);
+// }
 void PokazSterowanie(HWND hwnd) {
     CreateWindowW(L"STATIC", L"Sterowanie hakiem:", WS_VISIBLE | WS_CHILD, 10, 70, 200, 20, hwnd, NULL, NULL, NULL);
     CreateWindowW(L"BUTTON", L"<-", WS_VISIBLE | WS_CHILD, 10, 100, 50, 30, hwnd, (HMENU)(400), NULL, NULL);
@@ -236,7 +257,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
     case WM_CREATE:
       //  PokazPrzyciskiZadan(hwnd);
-        
+        PokazPrzyciskiZadan(hwnd);
         PokazSterowanie(hwnd);
         PokazWaga(hwnd);
         PokazListy(hwnd);
@@ -253,23 +274,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         case 105: trybDzwigu = AUTO_WIEZA_2; break;
         case 106:
             wiezaElementow.clear();
+            pole.clear();
             InvalidateRect(hwnd, NULL, TRUE);
             break;
         default: break;
         }
 
-        if (LOWORD(wParam) >= 100 && LOWORD(wParam) <= 106) {
-            for (int i = 100; i <= 403; ++i) {
-                HWND btn = GetDlgItem(hwnd, i);
-                if (btn) DestroyWindow(btn);
-            }
 
-            PokazKsztalty(hwnd);
-            PokazSterowanie(hwnd);
-            aktualnyElement = { BRAK_KSZTALTU, -100, -100 };
-            InvalidateRect(hwnd, NULL, TRUE);
-            break;  // bardzo ważne!
-        }
 
         switch (LOWORD(wParam)) {
         case 200:
@@ -291,13 +302,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             InvalidateRect(hwnd, NULL, TRUE);
             break;
         case 403:
-            if(pole[(animX - 50) / 60].empty())
+            if(pole[(animX - 20) / 60].empty())
         {
             MessageBoxW(hwnd, L"Najpierw wybierz ksztalt!", L"Uwaga", MB_OK | MB_ICONWARNING);
             break;
         }
         else
-            aktualnyElement = pole[(animX - 50) / 60].back();
+            aktualnyElement = pole[(animX - 20) / 60].back();
             if (aktualnyElement.ksztalt == BRAK_KSZTALTU) {
                 MessageBoxW(hwnd, L"Najpierw wybierz ksztalt!", L"Uwaga", MB_OK | MB_ICONWARNING);
                 break;
@@ -332,7 +343,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             animStan = ANIM_ZNIZANIE_DO_KLOCKA; // Poprawiono: usunięto polski znak "Ż"
             pokazElementNaHak = false;
             klocekNaZiemi = true;
-            pole[(animX - 50) / 60].pop_back();; // Dodajemy klocek do wieży
+            pole[(animX - 20) / 60].pop_back();; // Dodajemy klocek do wieży
             SetTimer(hwnd, 1, 30, NULL);
             break;
         case 400: // <-
