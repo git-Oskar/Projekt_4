@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <vector>
+#include <iostream>
 
 enum Ksztalt { BRAK_KSZTALTU, KWADRAT, TROJKAT, KOLKO };
 enum TrybDzwigu {
@@ -100,6 +101,56 @@ void PokazPrzyciskiZadan(HWND hwnd) {
     CreateWindowW(L"BUTTON", L"Resetuj Wieze", WS_VISIBLE | WS_CHILD, 10, 250, 180, 30, hwnd, (HMENU)(106), NULL, NULL);
 }
 
+void PokazWaga(HWND hwnd)
+{
+    for(int i = 0 ; i < 6; ++i){
+       HWND hEdit = CreateWindowW(
+    L"EDIT",           // Klasa kontrolki
+    L"Waga",               // Tekst początkowy
+    WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT,
+    50 + 60 * i, 460, 50, 20,  // Pozycja i rozmiar
+    hwnd,              // Okno nadrzędne
+    (HMENU)(500 + i),       // ID kontrolki
+    NULL, NULL
+);
+   HFONT hFont = CreateFontW(
+        15, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
+        DEFAULT_PITCH | FF_SWISS, L"Segoe UI"
+    );
+
+    SendMessage(hEdit, WM_SETFONT, WPARAM(hFont), TRUE);
+}
+}
+
+void PokazListy(HWND hwnd)
+{
+    for(int i = 0 ; i < 6 ; ++ i)
+    {
+        HWND hList = CreateWindowW(
+            L"COMBOBOX",  // Klasa kontrolki
+            L"KSZTAŁT",   // <-- poprawka tutaj
+            WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
+            50 + 60 * i, 490, 50, 120,  // Pozycja i rozmiar
+            hwnd,
+            (HMENU)(600 + i),  // ID kontrolki
+            NULL, NULL
+        );
+        SendMessageW(hList, CB_ADDSTRING, 0, (LPARAM)L"Kwadrat");
+        SendMessageW(hList, CB_ADDSTRING, 0, (LPARAM)L"Trojkat");
+        SendMessageW(hList, CB_ADDSTRING, 0, (LPARAM)L"Kolo");
+        SendMessageW(hList, CB_SETCURSEL, 0, 0);
+    }
+}
+
+void PokazPlus(HWND hwnd)
+{
+    for(int i = 0 ; i < 6 ; i ++)
+    {
+        CreateWindowW(L"BUTTON", L"+", WS_VISIBLE | WS_CHILD, 50 + 60 * i, 520, 50, 20, hwnd, (HMENU)(700 + i), NULL, NULL);
+    }
+}
+
 void PokazKsztalty(HWND hwnd) {
     CreateWindowW(L"BUTTON", L"Kwadrat", WS_VISIBLE | WS_CHILD, 10, 50, 100, 30, hwnd, (HMENU)(200), NULL, NULL);
     CreateWindowW(L"BUTTON", L"Trojkat", WS_VISIBLE | WS_CHILD, 120, 50, 100, 30, hwnd, (HMENU)(201), NULL, NULL);
@@ -117,6 +168,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
     case WM_CREATE:
         PokazPrzyciskiZadan(hwnd);
+        PokazWaga(hwnd);
+        PokazListy(hwnd);
+        PokazPlus(hwnd);
         break;
 
     case WM_COMMAND:
@@ -358,6 +412,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 {
+    
     WNDCLASSW wc = { 0 };
     wc.lpfnWndProc = WndProc;
     wc.hInstance = hInstance;
@@ -366,6 +421,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 
     HWND hwnd = CreateWindowW(wc.lpszClassName, L"Symulator Dzwigu - Zadanie 4.1", WS_OVERLAPPEDWINDOW, 100, 100, 800, 600, NULL, NULL, hInstance, NULL);
     ShowWindow(hwnd, nCmdShow);
+
+ 
 
     MSG msg;
     while (GetMessage(&msg, NULL, 0, 0)) {
