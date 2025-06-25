@@ -2,14 +2,21 @@
 #include <vector>
 
 enum Ksztalt { BRAK_KSZTALTU, KWADRAT, TROJKAT, KOLKO };
-enum TrybDzwigu { BRAK, KWADRATY_ONLY };
-
+enum TrybDzwigu {
+    BRAK,
+    KWADRATY_ONLY,
+    TROJKATY_ONLY,
+    KOLKA_ONLY,
+    OGRANICZENIE_MASY,
+    AUTO_WIEZA_1,
+    AUTO_WIEZA_2
+};
 struct Element {
     Ksztalt ksztalt;
     int x, y; // Pozycja do rysowania
 };
 
-std::vector<Element> wiezaKwadratow;
+std::vector<Element> wiezaElementow;
 TrybDzwigu trybDzwigu = BRAK;
 Element aktualnyElement = { BRAK_KSZTALTU, -100, -100 };
 bool pokazElementy = false;
@@ -19,7 +26,7 @@ bool przesuniety = false;
 // Animacja:
 enum AnimState {
     ANIM_NONE,
-    ANIM_ZNIŻANIE_DO_KLOCKA,
+    ANIM_ZNIZANIE_DO_KLOCKA,        // Poprawiono: usunięto polski znak "Ż"
     ANIM_PODNOSZENIE_Z_KLOCKIEM,
     ANIM_PRZESUWANIE_W_PRAWO,
     ANIM_OPUSZCZANIE,
@@ -39,7 +46,14 @@ int klocekStartY = 400;
 
 bool pokazElementNaHak = false;  // czy rysować klocek na haku (podczas podnoszenia i przenoszenia)
 bool klocekNaZiemi = true;       // czy klocek jest na ziemi (na start)
-
+int MasaKsztaltu(Ksztalt k) {
+    switch (k) {
+    case KWADRAT: return 4;
+    case TROJKAT: return 6;
+    case KOLKO: return 8;
+    default: return 0;
+    }
+}
 void RysujElement(HDC hdc, const Element& e) {
     switch (e.ksztalt) {
     case KWADRAT:
@@ -78,8 +92,12 @@ void RysujDzwig(HDC hdc) {
 
 void PokazPrzyciskiZadan(HWND hwnd) {
     CreateWindowW(L"BUTTON", L"Zad 4.1 (Kwadraty)", WS_VISIBLE | WS_CHILD, 10, 10, 180, 30, hwnd, (HMENU)(100), NULL, NULL);
-    CreateWindowW(L"BUTTON", L"Zad 4.1 (trojkaty)", WS_VISIBLE | WS_CHILD, 200, 10, 180, 30, hwnd, (HMENU)(101), NULL, NULL);
-
+    CreateWindowW(L"BUTTON", L"Zad 4.2 (Trojkaty)", WS_VISIBLE | WS_CHILD, 10, 50, 180, 30, hwnd, (HMENU)(101), NULL, NULL);
+    CreateWindowW(L"BUTTON", L"Zad 4.3 (Kolka)", WS_VISIBLE | WS_CHILD, 10, 90, 180, 30, hwnd, (HMENU)(102), NULL, NULL);
+    CreateWindowW(L"BUTTON", L"Zad 4.4 (Masa <= 6)", WS_VISIBLE | WS_CHILD, 10, 130, 180, 30, hwnd, (HMENU)(103), NULL, NULL);
+    CreateWindowW(L"BUTTON", L"Zad 4.5 (Auto Wieza)", WS_VISIBLE | WS_CHILD, 10, 170, 180, 30, hwnd, (HMENU)(104), NULL, NULL);
+    CreateWindowW(L"BUTTON", L"Zad 4.6 (Auto Lekka Wieza)", WS_VISIBLE | WS_CHILD, 10, 210, 180, 30, hwnd, (HMENU)(105), NULL, NULL);
+    CreateWindowW(L"BUTTON", L"Resetuj Wieze", WS_VISIBLE | WS_CHILD, 10, 250, 180, 30, hwnd, (HMENU)(106), NULL, NULL);
 }
 
 void PokazKsztalty(HWND hwnd) {
@@ -88,7 +106,13 @@ void PokazKsztalty(HWND hwnd) {
     CreateWindowW(L"BUTTON", L"Kolo", WS_VISIBLE | WS_CHILD, 230, 50, 100, 30, hwnd, (HMENU)(202), NULL, NULL);
     CreateWindowW(L"BUTTON", L"Przenoszenie", WS_VISIBLE | WS_CHILD, 10, 100, 150, 30, hwnd, (HMENU)(300), NULL, NULL);
 }
-
+void PokazSterowanie(HWND hwnd) {
+    CreateWindowW(L"STATIC", L"Sterowanie hakiem:", WS_VISIBLE | WS_CHILD, 10, 130, 200, 20, hwnd, NULL, NULL, NULL);
+    CreateWindowW(L"BUTTON", L"<-", WS_VISIBLE | WS_CHILD, 10, 160, 50, 30, hwnd, (HMENU)(400), NULL, NULL);
+    CreateWindowW(L"BUTTON", L"->", WS_VISIBLE | WS_CHILD, 70, 160, 50, 30, hwnd, (HMENU)(401), NULL, NULL);
+    CreateWindowW(L"BUTTON", L"^", WS_VISIBLE | WS_CHILD, 130, 160, 50, 30, hwnd, (HMENU)(402), NULL, NULL);
+    CreateWindowW(L"BUTTON", L"v", WS_VISIBLE | WS_CHILD, 190, 160, 50, 30, hwnd, (HMENU)(403), NULL, NULL);
+}
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
     case WM_CREATE:
@@ -97,16 +121,33 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
     case WM_COMMAND:
         switch (LOWORD(wParam)) {
-        case 100:
-            trybDzwigu = KWADRATY_ONLY;
-            pokazElementy = true;
-            pokazPrzenoszenie = true;
-            for (int i = 100; i <= 102; i++) DestroyWindow(GetDlgItem(hwnd, i));
-            PokazKsztalty(hwnd);
-            aktualnyElement = { BRAK_KSZTALTU, -100, -100 };
+        case 100: trybDzwigu = KWADRATY_ONLY; break;
+        case 101: trybDzwigu = TROJKATY_ONLY; break;
+        case 102: trybDzwigu = KOLKA_ONLY; break;
+        case 103: trybDzwigu = OGRANICZENIE_MASY; break;
+        case 104: trybDzwigu = AUTO_WIEZA_1; break;
+        case 105: trybDzwigu = AUTO_WIEZA_2; break;
+        case 106:
+            wiezaElementow.clear();
             InvalidateRect(hwnd, NULL, TRUE);
             break;
+        default: break;
+        }
 
+        if (LOWORD(wParam) >= 100 && LOWORD(wParam) <= 106) {
+            for (int i = 100; i <= 403; ++i) {
+                HWND btn = GetDlgItem(hwnd, i);
+                if (btn) DestroyWindow(btn);
+            }
+
+            PokazKsztalty(hwnd);
+            PokazSterowanie(hwnd);
+            aktualnyElement = { BRAK_KSZTALTU, -100, -100 };
+            InvalidateRect(hwnd, NULL, TRUE);
+            break;  // bardzo ważne!
+        }
+
+        switch (LOWORD(wParam)) {
         case 200:
             aktualnyElement = { KWADRAT, klocekStartX, klocekStartY };
             przesuniety = false;
@@ -130,30 +171,70 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 MessageBoxW(hwnd, L"Najpierw wybierz ksztalt!", L"Uwaga", MB_OK | MB_ICONWARNING);
                 break;
             }
-            if (trybDzwigu == KWADRATY_ONLY && aktualnyElement.ksztalt != KWADRAT) {
-                MessageBoxW(hwnd, L"Tylko kwadrat moze byc przeniesiony!", L"Blad", MB_OK | MB_ICONERROR);
+
+            // Walidacja trybu
+            if ((trybDzwigu == KWADRATY_ONLY && aktualnyElement.ksztalt != KWADRAT) ||
+                (trybDzwigu == TROJKATY_ONLY && aktualnyElement.ksztalt != TROJKAT) ||
+                (trybDzwigu == KOLKA_ONLY && aktualnyElement.ksztalt != KOLKO)) {
+                MessageBoxW(hwnd, L"Ten ksztalt nie moze byc przeniesiony w tym trybie!", L"Blad", MB_OK | MB_ICONERROR);
                 aktualnyElement = { BRAK_KSZTALTU, -100, -100 };
                 InvalidateRect(hwnd, NULL, TRUE);
                 break;
             }
-            if (wiezaKwadratow.size() >= 3) {
+
+            if (trybDzwigu == OGRANICZENIE_MASY || trybDzwigu == AUTO_WIEZA_2) {
+                int masa = MasaKsztaltu(aktualnyElement.ksztalt);
+                if (masa > 6) {
+                    MessageBoxW(hwnd, L"Klocek za ciezki! (masa > 6)", L"Blad", MB_OK | MB_ICONERROR);
+                    aktualnyElement = { BRAK_KSZTALTU, -100, -100 };
+                    InvalidateRect(hwnd, NULL, TRUE);
+                    break;
+                }
+            }
+
+            if (wiezaElementow.size() >= 3) {
                 MessageBoxW(hwnd, L"Maksymalna wysokosc wiezy to 3!", L"Info", MB_OK | MB_ICONINFORMATION);
                 break;
             }
 
-            // Start animacji: najpierw zniżanie haka do klocka na ziemi
+            // Start animacji
             animX = klocekStartX;
             animY = hakStartY;
-            animStan = ANIM_ZNIŻANIE_DO_KLOCKA;
+            animStan = ANIM_ZNIZANIE_DO_KLOCKA; // Poprawiono: usunięto polski znak "Ż"
             pokazElementNaHak = false;
+            klocekNaZiemi = true;
             SetTimer(hwnd, 1, 30, NULL);
+            break;
+        case 400: // <-
+            if (animStan == ANIM_NONE && animX > 50) {
+                animX -= 10;
+                InvalidateRect(hwnd, NULL, TRUE);
+            }
+            break;
+        case 401: // ->
+            if (animStan == ANIM_NONE && animX < 450) {
+                animX += 10;
+                InvalidateRect(hwnd, NULL, TRUE);
+            }
+            break;
+        case 402: // ^
+            if (animStan == ANIM_NONE && animY > 150) {
+                animY -= 10;
+                InvalidateRect(hwnd, NULL, TRUE);
+            }
+            break;
+        case 403: // v
+            if (animStan == ANIM_NONE && animY < 400) {
+                animY += 10;
+                InvalidateRect(hwnd, NULL, TRUE);
+            }
             break;
         }
         break;
 
     case WM_TIMER:
         switch (animStan) {
-        case ANIM_ZNIŻANIE_DO_KLOCKA:
+        case ANIM_ZNIZANIE_DO_KLOCKA: // Poprawiono: usunięto polski znak "Ż"
             if (animY < klocekStartY) {
                 animY += 5;  // zniżamy hak do klocka
                 if (animY > klocekStartY) animY = klocekStartY;
@@ -186,7 +267,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             }
             else {
                 // Oblicz docelową wysokość haka - na podstawie wielkości wieży
-                int baseY = 400 - static_cast<int>(wiezaKwadratow.size()) * 60;
+                int baseY = 400 - static_cast<int>(wiezaElementow.size()) * 60;
                 hakDoceloweY = baseY;
                 animStan = ANIM_OPUSZCZANIE;
                 InvalidateRect(hwnd, NULL, TRUE);
@@ -201,7 +282,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             }
             else {
                 // Odłóż klocek na wieżę (pozycja animX=400, y=hakDoceloweY)
-                wiezaKwadratow.push_back({ KWADRAT, 400, hakDoceloweY });
+                wiezaElementow.push_back({ aktualnyElement.ksztalt, 400, hakDoceloweY });
                 pokazElementNaHak = false;  // klocek już jest odłożony
                 aktualnyElement = { BRAK_KSZTALTU, -100, -100 };
                 animStan = ANIM_PODNOSZENIE;
@@ -254,11 +335,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
         // Rysuj klocek na haku podczas animacji podnoszenia/przenoszenia
         if ((animStan == ANIM_PODNOSZENIE_Z_KLOCKIEM || animStan == ANIM_PRZESUWANIE_W_PRAWO || animStan == ANIM_OPUSZCZANIE) && pokazElementNaHak) {
-            Element animElem = { KWADRAT, animX, animY };
+            Element animElem = { aktualnyElement.ksztalt, animX, animY };
             RysujElement(hdc, animElem);
         }
 
-        for (const auto& e : wiezaKwadratow) {
+        for (const auto& e : wiezaElementow) {
             RysujElement(hdc, e);
         }
 
