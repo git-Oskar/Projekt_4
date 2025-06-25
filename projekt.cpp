@@ -50,7 +50,34 @@ int klocekStartY = 400;
 bool pokazElementNaHak = false;  // czy rysować klocek na haku (podczas podnoszenia i przenoszenia)
 bool klocekNaZiemi = true;       // czy klocek jest na ziemi (na start)
 
+void RysujSkale(HDC hdc) {
+        int r[] = {255, 230, 200, 180, 150, 120 ,100 ,70 ,30,0} , g [] = {0,70,150,200,255,230,180,120,70,0}, b[] = {0,30,70,100,120,150,180,200,230,255};
+    HPEN hPen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0)); // czarny kontur
+    SelectObject(hdc, hPen);
+    TextOutW(hdc, 680, 10, L"Skala masy", 10);
+    for(int i = 0; i < 10; ++i) {
+         HBRUSH hBrush = CreateSolidBrush(RGB(r[i], g[i], b[i]));
+         SelectObject(hdc, hBrush);
+        Rectangle(hdc, 700 , 30 + i * 30, 730, 60 + i * 30);
+        wchar_t num[2] = {};
+        num [0] = L'1' + i; // zamiana liczby na znak
+        TextOutW(hdc, 735, 30 + i * 30, &num[0], 1);
+         DeleteObject(hBrush);
+    }
+   
+    DeleteObject(hPen);
+}
+
 void RysujElement(HDC hdc, const Element& e) {
+    HPEN hPen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0)); // czarny kontur
+    SelectObject(hdc, hPen);
+    int masa = e.waga - 1; // masa elementu 
+    int r[] = {255, 230, 200, 180, 150, 120 ,100 ,70 ,30,0} , g [] = {0,70,150,200,255,230,180,120,70,0}, b[] = {0,30,70,100,120,150,180,200,230,255};
+    HBRUSH hBrush = CreateSolidBrush(RGB(r[masa], g[masa], b[masa])); 
+    SelectObject(hdc, hBrush);
+
+
+
     switch (e.ksztalt) {
     case KWADRAT:
         Rectangle(hdc, e.x, e.y, e.x + 50, e.y + 50);
@@ -68,6 +95,8 @@ void RysujElement(HDC hdc, const Element& e) {
         break;
     }
     klocekNaZiemi = false;
+    DeleteObject(hBrush);
+    DeleteObject(hPen);
 }
 
 void WypelnijPole(HDC hdc) {
@@ -207,6 +236,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
     case WM_CREATE:
       //  PokazPrzyciskiZadan(hwnd);
+        
         PokazSterowanie(hwnd);
         PokazWaga(hwnd);
         PokazListy(hwnd);
@@ -422,7 +452,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
 
         RysujDzwig(hdc);
-
+        RysujSkale(hdc);
         // Rysuj klocek na ziemi, jeśli jest i nie został podniesiony
         if (klocekNaZiemi && aktualnyElement.ksztalt != BRAK_KSZTALTU) {
             RysujElement(hdc, aktualnyElement);
