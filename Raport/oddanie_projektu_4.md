@@ -12,7 +12,7 @@ Pojemność haka jest tylko na 1 element, a takowy można pojawić poprzez wybra
 Nad samym dźwigiem są przyciski do kontroli dźwigiem, które pozwalają użytkownikowi poruszanie się hakiem, podnoszenie oraz opuszczanie elementów na haku.
 Oczywiście w przypadku próby podniesienia, gdy nie ma elementu pod hakiem  do podniesienia to akcja zostanie przerwana i pojawi się komunikat o braku elementu do podniesienia.
 
-![Sine plot](![image-2.png](attachment:image-2.png)))
+![Dźwig](![image-2.png](attachment:image-2.png)))
 
 # Mechanizm tylko 1 typu elementu
 
@@ -26,5 +26,5 @@ Pod każdą kolumną dodaliśmy okienko z napisem “Waga”, gdzie można wpisa
 Legenda barw jest zawarta na suwaku.
 
 
-![sin ft](sin_ft.png)
-![sin_ft_fft](sin_ft_fft.png)
+![Dźwig](sin_ft.png)
+![Dźwig](sin_ft_fft.png)
