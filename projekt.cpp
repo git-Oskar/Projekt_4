@@ -21,6 +21,7 @@ struct Element {
 std::vector<Element> wiezaElementow;
 std::vector<std::vector<Element>> pole(7, std::vector<Element>(0)); // tablica zapisujaca ksztalty znajdujace sie miedzy ziemia a dzwigiem, 7 kolumn po elementy
 TrybDzwigu trybDzwigu = BRAK;
+std::vector<Element> naHaku;
 Element aktualnyElement = { BRAK_KSZTALTU, -100, -100, 0 };
 bool pokazElementy = false;
 bool pokazPrzenoszenie = false;
@@ -131,6 +132,13 @@ void RysujDzwig(HDC hdc) {
     // Noga dźwigu - pionowa linia od (50, 150) do (50, 400)
     MoveToEx(hdc, 50, 150, NULL);
     LineTo(hdc, 50, 400);
+
+    if(!naHaku.empty())
+    {
+        naHaku.back().x = animX;
+        naHaku.back().y = animY; // Ustawiamy pozycję X ostatniego elementu na haku
+        RysujElement(hdc, naHaku.back()); // Rysujemy ostatni element na haku
+    }
 }
 
 
@@ -196,6 +204,7 @@ void PokazPrzyciskiZadan(HWND hwnd) {
         300, 70, 200, 20, hwnd, (HMENU)102, NULL, NULL);
     CreateWindowW(L"BUTTON", L"Wszystkie ksztalty", WS_VISIBLE | WS_CHILD | BS_AUTORADIOBUTTON,
         300, 90, 200, 20, hwnd, (HMENU)103, NULL, NULL);
+    CreateWindowW(L"BUTTON", L"RESET", WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON, 300, 110, 200, 20, hwnd, (HMENU)106, NULL, NULL);
 }
 
 // void PokazKsztalty(HWND hwnd) {
@@ -274,7 +283,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         case 105: trybDzwigu = AUTO_WIEZA_2; break;
         case 106:
             wiezaElementow.clear();
-            pole.clear();
+            pole = std::vector<std::vector<Element>>(7); 
+            naHaku.clear();
             InvalidateRect(hwnd, NULL, TRUE);
             break;
         default: break;
@@ -301,8 +311,27 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             klocekNaZiemi = true;
             InvalidateRect(hwnd, NULL, TRUE);
             break;
-        case 403:
-            if(pole[(animX - 20) / 60].empty())
+      
+        case 400: // <-
+            if (animStan == ANIM_NONE && animX > 50) {
+                animX -= 10;
+                InvalidateRect(hwnd, NULL, TRUE);
+            }
+            break;
+        case 401: // ->
+            if (animStan == ANIM_NONE && animX < 450) {
+                animX += 10;
+                InvalidateRect(hwnd, NULL, TRUE);
+            }
+            break;
+        case 402: // ^
+
+        if(!naHaku.empty())
+            {
+                MessageBoxW(hwnd, L"Najpierw opusc zawartość haka!", L"Uwaga", MB_OK | MB_ICONWARNING);
+            break;
+            }
+             if(pole[(animX - 20) / 60].empty())
         {
             MessageBoxW(hwnd, L"Najpierw wybierz ksztalt!", L"Uwaga", MB_OK | MB_ICONWARNING);
             break;
@@ -338,31 +367,42 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 MessageBoxW(hwnd, L"Maksymalna wysokosc wiezy to 3!", L"Info", MB_OK | MB_ICONINFORMATION);
                 break;
             }
-
-
+             
+            klocekStartY = 440 - static_cast<int>(pole[(animX - 20) / 60].size()) * 50; 
             animStan = ANIM_ZNIZANIE_DO_KLOCKA; // Poprawiono: usunięto polski znak "Ż"
             pokazElementNaHak = false;
             klocekNaZiemi = true;
-            pole[(animX - 20) / 60].pop_back();; // Dodajemy klocek do wieży
+            
             SetTimer(hwnd, 1, 30, NULL);
             break;
-        case 400: // <-
-            if (animStan == ANIM_NONE && animX > 50) {
-                animX -= 10;
-                InvalidateRect(hwnd, NULL, TRUE);
-            }
             break;
-        case 401: // ->
-            if (animStan == ANIM_NONE && animX < 450) {
-                animX += 10;
-                InvalidateRect(hwnd, NULL, TRUE);
-            }
+
+          case 403:
+
+            if(naHaku.empty())
+            {
+                MessageBoxW(hwnd, L"Masz pusty hak!", L"Uwaga", MB_OK | MB_ICONWARNING);
             break;
-        case 402: // ^
-            if (animStan == ANIM_NONE && animY > 150) {
-                animY -= 10;
-                InvalidateRect(hwnd, NULL, TRUE);
             }
+            if(pole[(animX - 20) / 60].size()>3)
+        {
+            MessageBoxW(hwnd, L"Przekroczono maksymalna wysokosc wierzy w tej kolumnie!", L"Uwaga", MB_OK | MB_ICONWARNING);
+            break;
+        }
+        else
+            aktualnyElement = naHaku.back();
+            if (aktualnyElement.ksztalt == BRAK_KSZTALTU) {
+                MessageBoxW(hwnd, L"Najpierw wybierz ksztalt!", L"Uwaga", MB_OK | MB_ICONWARNING);
+                break;
+            }
+
+            // Walidacja trybu
+            int baseY = 400 - static_cast<int>(pole[(animX - 20) / 60].size()) * 50;
+            hakDoceloweY = baseY;
+            animStan = ANIM_OPUSZCZANIE; // Poprawiono: usunięto polski znak "Ż"
+            pokazElementNaHak = false;
+            klocekNaZiemi = true;
+            SetTimer(hwnd, 1, 30, NULL);
             break;
         
         }
@@ -381,18 +421,24 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 pokazElementNaHak = true;
                 klocekNaZiemi = false;
                 InvalidateRect(hwnd, NULL, TRUE);
+                pole[(animX - 20) / 60].pop_back();
+                 naHaku.push_back(aktualnyElement);
             }
             break;
 
         case ANIM_PODNOSZENIE_Z_KLOCKIEM:
+                
             if (animY > hakStartY) {
+                
                 animY -= 5; // podnosimy hak z klockiem
-                if (animY < hakStartY) animY = hakStartY;
-                InvalidateRect(hwnd, NULL, TRUE);
+                if (animY < hakStartY) 
+                animY = hakStartY;
+            InvalidateRect(hwnd, NULL, TRUE);
             }
-            else {
-                animStan = ANIM_PRZESUWANIE_W_PRAWO;
-                InvalidateRect(hwnd, NULL, TRUE);
+            else
+            {
+                animStan = ANIM_NONE;
+                KillTimer(hwnd, 1);
             }
             break;
 
@@ -403,7 +449,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             }
             else {
                 // Oblicz docelową wysokość haka - na podstawie wielkości wieży
-                int baseY = 400 - static_cast<int>(wiezaElementow.size()) * 60;
+                int baseY = 400 - static_cast<int>(pole[(animX - 20) / 60].size()) * 50;
                 hakDoceloweY = baseY;
                 animStan = ANIM_OPUSZCZANIE;
                 InvalidateRect(hwnd, NULL, TRUE);
@@ -418,7 +464,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             }
             else {
                 // Odłóż klocek na wieżę (pozycja animX=400, y=hakDoceloweY)
-                wiezaElementow.push_back({ aktualnyElement.ksztalt, 400, hakDoceloweY });
+                aktualnyElement.x = animX; 
+                aktualnyElement.y = hakDoceloweY; 
+                pole[(animX - 20) / 60].push_back(aktualnyElement);
+                aktualnyElement.x = animX; // Ustawiamy pozycję X klocka na wieży
+                naHaku.pop_back(); // usuwamy klocek z haka
                 pokazElementNaHak = false;  // klocek już jest odłożony
                 aktualnyElement = { BRAK_KSZTALTU, -100, -100 };
                 animStan = ANIM_PODNOSZENIE;
@@ -433,8 +483,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 InvalidateRect(hwnd, NULL, TRUE);
             }
             else {
-                animStan = ANIM_WRACANIE;
                 InvalidateRect(hwnd, NULL, TRUE);
+                KillTimer(hwnd, 1);
+                animStan = ANIM_NONE;
+
+
             }
             break;
 
@@ -460,26 +513,41 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     {
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hwnd, &ps);
-        FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
 
-        RysujDzwig(hdc);
-        RysujSkale(hdc);
-        // Rysuj klocek na ziemi, jeśli jest i nie został podniesiony
+        // Utwórz bufor w pamięci (double buffering)
+        RECT rc;
+        GetClientRect(hwnd, &rc);
+        HDC memDC = CreateCompatibleDC(hdc);
+        HBITMAP memBM = CreateCompatibleBitmap(hdc, rc.right - rc.left, rc.bottom - rc.top);
+        HBITMAP oldBM = (HBITMAP)SelectObject(memDC, memBM);
+
+        FillRect(memDC, &rc, (HBRUSH)(COLOR_WINDOW + 1));
+
+        RysujDzwig(memDC);
+        RysujSkale(memDC);
+
         if (klocekNaZiemi && aktualnyElement.ksztalt != BRAK_KSZTALTU) {
-            RysujElement(hdc, aktualnyElement);
+            RysujElement(memDC, aktualnyElement);
         }
 
-        // Rysuj klocek na haku podczas animacji podnoszenia/przenoszenia
         if ((animStan == ANIM_PODNOSZENIE_Z_KLOCKIEM || animStan == ANIM_PRZESUWANIE_W_PRAWO || animStan == ANIM_OPUSZCZANIE) && pokazElementNaHak) {
             Element animElem = { aktualnyElement.ksztalt, animX, animY , aktualnyElement.waga };
-            RysujElement(hdc, animElem);
+            RysujElement(memDC, animElem);
         }
 
         for (const auto& e : wiezaElementow) {
-            RysujElement(hdc, e);
+            RysujElement(memDC, e);
         }
 
-        WypelnijPole(hdc);
+        WypelnijPole(memDC);
+
+        // Przenieś bufor na ekran
+        BitBlt(hdc, 0, 0, rc.right - rc.left, rc.bottom - rc.top, memDC, 0, 0, SRCCOPY);
+
+        // Sprzątanie
+        SelectObject(memDC, oldBM);
+        DeleteObject(memBM);
+        DeleteDC(memDC);
 
         EndPaint(hwnd, &ps);
         break;
