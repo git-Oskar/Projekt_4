@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <vector>
 #include <iostream>
+#include <commctrl.h> 
 
 enum Ksztalt { BRAK_KSZTALTU, KWADRAT, TROJKAT, KOLKO };
 enum TrybDzwigu {
@@ -17,7 +18,7 @@ struct Element {
     int x, y; // Pozycja do rysowania
     int waga;
 };
-
+int masa = 10;
 std::vector<Element> wiezaElementow;
 std::vector<std::vector<Element>> pole(7, std::vector<Element>(0)); // tablica zapisujaca ksztalty znajdujace sie miedzy ziemia a dzwigiem, 7 kolumn po elementy
 TrybDzwigu trybDzwigu = BRAK;
@@ -51,29 +52,36 @@ int klocekStartY = 400;
 bool pokazElementNaHak = false;  // czy rysować klocek na haku (podczas podnoszenia i przenoszenia)
 bool klocekNaZiemi = true;       // czy klocek jest na ziemi (na start)
 
-void RysujSkale(HDC hdc) {
-        int r[] = {255, 230, 200, 180, 150, 120 ,100 ,70 ,30,0} , g [] = {0,70,150,200,255,230,180,120,70,0}, b[] = {0,30,70,100,120,150,180,200,230,255};
+// Add global variable for slider handle
+HWND hSlider = NULL;
+
+void RysujSkale(HDC hdc, HWND hwnd, HINSTANCE hInst) {
+    int r[] = {255, 230, 200, 180, 150, 120 ,100 ,70 ,30,0};
+    int g[] = {0,70,150,200,255,230,180,120,70,0};
+    int b[] = {0,30,70,100,120,150,180,200,230,255};
     HPEN hPen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0)); // czarny kontur
-    SelectObject(hdc, hPen);
+    HPEN oldPen = (HPEN)SelectObject(hdc, hPen);
     TextOutW(hdc, 680, 10, L"Skala masy", 10);
     for(int i = 0; i < 10; ++i) {
-         HBRUSH hBrush = CreateSolidBrush(RGB(r[i], g[i], b[i]));
-         SelectObject(hdc, hBrush);
+        HBRUSH hBrush = CreateSolidBrush(RGB(r[i], g[i], b[i]));
+        HBRUSH oldBrush = (HBRUSH)SelectObject(hdc, hBrush);
         Rectangle(hdc, 700 , 30 + i * 30, 730, 60 + i * 30);
-        wchar_t num[2] = {};
-        num [0] = L'1' + i; // zamiana liczby na znak
-        num[1] = L'\0';
-        if(i == 9)
-        {
-        num[0] = L'1';
-        num[1] = L'0';
-    
+        wchar_t num[3] = {};
+        if(i == 9) {
+            num[0] = L'1';
+            num[1] = L'0';
+            num[2] = L'\0';
+        } else {
+            num[0] = L'1' + i; // zamiana liczby na znak
+            num[1] = L'\0';
         }
-        TextOutW(hdc, 735, 30 + i * 30, &num[0], 2);
-         DeleteObject(hBrush);
+        TextOutW(hdc, 735, 30 + i * 30, num, (i == 9) ? 2 : 1);
+        SelectObject(hdc, oldBrush);
+        DeleteObject(hBrush);
     }
-   
+    SelectObject(hdc, oldPen);
     DeleteObject(hPen);
+    // Do NOT create the slider here!
 }
 
 void RysujElement(HDC hdc, const Element& e) {
@@ -207,18 +215,25 @@ void PokazPrzyciskiZadan(HWND hwnd) {
     CreateWindowW(L"BUTTON", L"RESET", WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON, 300, 110, 200, 20, hwnd, (HMENU)106, NULL, NULL);
 }
 
-// void PokazKsztalty(HWND hwnd) {
-//     CreateWindowW(L"BUTTON", L"Kwadrat", WS_VISIBLE | WS_CHILD, 10, 50, 100, 30, hwnd, (HMENU)(200), NULL, NULL);
-//     CreateWindowW(L"BUTTON", L"Trojkat", WS_VISIBLE | WS_CHILD, 120, 50, 100, 30, hwnd, (HMENU)(201), NULL, NULL);
-//     CreateWindowW(L"BUTTON", L"Kolo", WS_VISIBLE | WS_CHILD, 230, 50, 100, 30, hwnd, (HMENU)(202), NULL, NULL);
-//     CreateWindowW(L"BUTTON", L"Przenoszenie", WS_VISIBLE | WS_CHILD, 10, 100, 150, 30, hwnd, (HMENU)(300), NULL, NULL);
-// }
+
 void PokazSterowanie(HWND hwnd) {
     CreateWindowW(L"STATIC", L"Sterowanie hakiem:", WS_VISIBLE | WS_CHILD, 10, 70, 200, 20, hwnd, NULL, NULL, NULL);
     CreateWindowW(L"BUTTON", L"<-", WS_VISIBLE | WS_CHILD, 10, 100, 50, 30, hwnd, (HMENU)(400), NULL, NULL);
     CreateWindowW(L"BUTTON", L"->", WS_VISIBLE | WS_CHILD, 70, 100, 50, 30, hwnd, (HMENU)(401), NULL, NULL);
     CreateWindowW(L"BUTTON", L"^", WS_VISIBLE | WS_CHILD, 130, 100, 50, 30, hwnd, (HMENU)(402), NULL, NULL);
     CreateWindowW(L"BUTTON", L"v", WS_VISIBLE | WS_CHILD, 190, 100, 50, 30, hwnd, (HMENU)(403), NULL, NULL);
+}
+
+void PokazSuwak(HWND hwnd, HINSTANCE hInst)
+{
+    hSlider = CreateWindowExW(
+            0, TRACKBAR_CLASSW, L"",
+            WS_CHILD | WS_VISIBLE | TBS_VERT | TBS_AUTOTICKS,
+            670, 30, 30, 300,
+            hwnd, (HMENU)1000, hInst, NULL
+        );
+        SendMessageW(hSlider, TBM_SETRANGE, TRUE, MAKELPARAM(1, 10));
+        SendMessageW(hSlider, TBM_SETPOS, TRUE, 5);
 }
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     
@@ -265,12 +280,21 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     
     switch (msg) {
     case WM_CREATE:
-      //  PokazPrzyciskiZadan(hwnd);
         PokazPrzyciskiZadan(hwnd);
         PokazSterowanie(hwnd);
         PokazWaga(hwnd);
         PokazListy(hwnd);
         PokazPlus(hwnd);
+        PokazSuwak(hwnd, ((LPCREATESTRUCT)lParam)->hInstance);
+    
+        
+        break;
+
+    case WM_VSCROLL:
+        if ((HWND)lParam == hSlider) 
+        {
+            masa = (int)SendMessageW(hSlider, TBM_GETPOS, 0, 0);
+        }
         break;
 
     case WM_COMMAND:
@@ -334,6 +358,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
              if(pole[(animX - 20) / 60].empty())
         {
             MessageBoxW(hwnd, L"Najpierw wybierz ksztalt!", L"Uwaga", MB_OK | MB_ICONWARNING);
+            break;
+        }
+             if(pole[(animX - 20) / 60].back().waga > masa)
+        {
+            MessageBoxW(hwnd, L"Klocek jest zbyt ciezki!", L"Uwaga", MB_OK | MB_ICONWARNING);
             break;
         }
         else
@@ -524,7 +553,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         FillRect(memDC, &rc, (HBRUSH)(COLOR_WINDOW + 1));
 
         RysujDzwig(memDC);
-        RysujSkale(memDC);
+        RysujSkale(memDC, hwnd, (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE));
 
         if (klocekNaZiemi && aktualnyElement.ksztalt != BRAK_KSZTALTU) {
             RysujElement(memDC, aktualnyElement);
